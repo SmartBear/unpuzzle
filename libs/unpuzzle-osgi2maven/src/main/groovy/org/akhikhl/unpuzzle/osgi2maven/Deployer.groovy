@@ -14,9 +14,7 @@ import groovy.xml.NamespaceBuilder
  * @author akhikhl
  */
 class Deployer {
-  
-  private static final String antTasksFileName = 'maven-ant-tasks-2.1.4-SNAPSHOT.jar'
-
+    
   private static URL fileToUrl(File f) {
     String s = f.toURI().toString()
     if(s.endsWith('/'))
@@ -57,25 +55,47 @@ class Deployer {
    */
   Deployer(Map deployerOptions = [:], URL repositoryUrl) {
     this.deployerOptions = ([:] << deployerOptions).asImmutable()
-    if(this.deployerOptions.ant)
-      this.ant = this.deployerOptions.ant
+	
+	ClassLoader loader = this.getClass().getClassLoader()
+    if (this.deployerOptions.ant) {
+	  System.out.prinln('Unsing supported ant ' + this.deployerOptions.ant)
+	  this.ant = this.deployerOptions.ant
+	}
     else {
-      File tempDir = deployerOptions.tempDir ?: new File(System.getProperty('java.io.tmpdir'), 'unpuzzle')
-      tempDir.mkdirs()
-      File antTasksFile = new File(tempDir, antTasksFileName)
-      if(!antTasksFile.exists())
-        getClass().getClassLoader().getResourceAsStream(antTasksFileName).withStream { ins ->
-          antTasksFile.withOutputStream { outs ->
-            outs << ins
-          }
-        }
-      ClassLoader antTasksClassLoader = new URLClassLoader([ antTasksFile.toURI().toURL() ] as URL[], getClass().getClassLoader())
-      this.ant = Class.forName('groovy.util.AntBuilder', true, antTasksClassLoader).newInstance()
-      this.ant.taskdef(resource: 'org/apache/maven/artifact/ant/antlib.xml', classpath: antTasksFile.toURI().toURL().toString())
-    }
+	  // create new AntBuilder instance
+	  System.out.println('Using current thread classloader to create a new groovy.util.AntBuilder');
+	  this.ant = Class.forName('groovy.util.AntBuilder', true, loader).newInstance()
+	}
+		
+	// ensure presence of Pom and Deploy tasks
+	defineAntTask('pom', 'org.apache.maven.artifact.ant.Pom', loader)
+	defineAntTask('deploy', 'org.apache.maven.artifact.ant.DeployTask', loader)
+	
     this.repositoryUrl = repositoryUrl
     workFolder = new File(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString())
     workFolder.deleteOnExit()
+  }
+  
+  /**
+   * Define ant tasks using the provided classloader.
+   *
+   * Print classpath with exception if task is missing to simplify resulution.
+   */
+  private void defineAntTask(String taskName, String taskClassName, ClassLoader loader) {
+	Class<?> pomClass = loader.loadClass(taskClassName)
+	if (pomClass == null) {
+	  URL[] clURLs = loader.getURLs()
+	  StringBuilder sb = new StringBuilder()
+	  sb.append('Missing class ')
+	  sb.append(taskClassName)
+	  sb.append('\nEnsure package maven-ant-tasks is in classpath')
+	  for (URL uri: clURLs) {		
+	    sb.append('\n')
+	    sb.append(uri)
+	  }
+	  throw new ClassNotFoundException(sb.toString())
+	}
+	this.ant.getAntProject().addTaskDefinition(taskClassName, pomClass)
   }
 
   /**
@@ -87,7 +107,7 @@ class Deployer {
   void deployBundle(Map options = [:], Pom pomStruct, File bundleFileOrDirectory) {
     workFolder.mkdirs()
     def pomFile = new File(workFolder, 'myPom.xml')
-    File bundleFile
+    File bundleFile	
     if (bundleFileOrDirectory.isDirectory()) {
       pomStruct.packaging = 'jar'
       pomFile.text = pomStruct.toString()
@@ -105,7 +125,16 @@ class Deployer {
       ant.zip(basedir: sourceFile, destfile: zipFile)
       sourceFile = zipFile
     }
-    ant.with {
+	
+	ClassLoader loader = this.getClass().getClassLoader()
+	Class<?> pomClass = loader.loadClass('org.apache.maven.artifact.ant.Pom')
+	Class<?> deployClass = loader.loadClass('org.apache.maven.artifact.ant.DeployTask')
+	
+    ant.with {	  
+	  // define ant tasks in the scope of the current project
+	  getAntProject().addTaskDefinition('pom', pomClass)
+	  getAntProject().addTaskDefinition('deploy', deployClass)
+	  
       pom id: 'mypom', file: pomFile
       deploy file: bundleFile, {
         pom refid: 'mypom'
