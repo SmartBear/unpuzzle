@@ -55,15 +55,42 @@ class Deployer {
    */
   Deployer(Map deployerOptions = [:], URL repositoryUrl) {
     this.deployerOptions = ([:] << deployerOptions).asImmutable()
-    if (this.deployerOptions.ant)
-      this.ant = this.deployerOptions.ant
+	
+	ClassLoader loader = this.getClass().getClassLoader()
+    if (this.deployerOptions.ant) {
+	  System.out.prinln('Unsing supported ant ' + this.deployerOptions.ant)
+	  this.ant = this.deployerOptions.ant
+	}
     else {
-	  // create new ant instance
-	  this.ant = Class.forName('groovy.util.AntBuilder', true, Thread.currentThread().getContextClassLoader()).newInstance()
-    }
+	  // create new AntBuilder instance
+	  System.out.println('Using current thread classloader to create a new groovy.util.AntBuilder');
+	  this.ant = Class.forName('groovy.util.AntBuilder', true, loader).newInstance()
+	}
+		
+	// ensure presence of Pom and Deploy tasks
+	defineAntTask('pom', 'org.apache.maven.artifact.ant.Pom', loader)
+	defineAntTask('deploy', 'org.apache.maven.artifact.ant.DeployTask', loader)
+	
     this.repositoryUrl = repositoryUrl
     workFolder = new File(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString())
     workFolder.deleteOnExit()
+  }
+  
+  void defineAntTask(String taskName, String taskClassName, ClassLoader loader) {
+	Class<?> pomClass = loader.loadClass(taskClassName)
+	if (pomClass == null) {
+	  URL[] clURLs = loader.getURLs()
+	  StringBuilder sb = new StringBuilder()
+	  sb.append('Missing class ')
+	  sb.append(taskClassName)
+	  sb.append('\nEnsure package maven-ant-tasks is in classpath')
+	  for (URL uri: clURLs) {		
+	    sb.append('\n')
+	    sb.append(uri)
+	  }
+	  throw new ClassNotFoundException(sb.toString())
+	}
+	this.ant.getAntProject().addTaskDefinition('pom', pomClass)
   }
 
   /**
@@ -93,16 +120,6 @@ class Deployer {
       ant.zip(basedir: sourceFile, destfile: zipFile)
       sourceFile = zipFile
     }
-	
-	try {
-	  // verify that Ant tasks pom and deploy are available
-	  ClassLoader loader = Thread.currentThread().getContextClassLoader();		
-	  loader.loadClass('org.apache.maven.artifact.ant.Pom');
-	  loader.loadClass('org.apache.maven.artifact.ant.DeployTask');
-	}
-	catch (ClassNotFoundException ex) {
-		throw new ClassNotFoundException('Ensure package maven-ant-tasks is in classpath', ex);
-	}
 
     ant.with {
 	
