@@ -76,7 +76,12 @@ class Deployer {
     workFolder.deleteOnExit()
   }
   
-  void defineAntTask(String taskName, String taskClassName, ClassLoader loader) {
+  /**
+   * Define ant tasks using the provided classloader.
+   *
+   * Print classpath with exception if task is missing to simplify resulution.
+   */
+  private void defineAntTask(String taskName, String taskClassName, ClassLoader loader) {
 	Class<?> pomClass = loader.loadClass(taskClassName)
 	if (pomClass == null) {
 	  URL[] clURLs = loader.getURLs()
@@ -90,7 +95,7 @@ class Deployer {
 	  }
 	  throw new ClassNotFoundException(sb.toString())
 	}
-	this.ant.getAntProject().addTaskDefinition('pom', pomClass)
+	this.ant.getAntProject().addTaskDefinition(taskClassName, pomClass)
   }
 
   /**
@@ -120,11 +125,15 @@ class Deployer {
       ant.zip(basedir: sourceFile, destfile: zipFile)
       sourceFile = zipFile
     }
-
-    ant.with {
 	
-	  taskdef name: 'pom', classname: 'org.apache.maven.artifact.ant.Pom'
-	  taskdef name: 'deploy', classname: 'org.apache.maven.artifact.ant.DeployTask'
+	ClassLoader loader = this.getClass().getClassLoader()
+	Class<?> pomClass = loader.loadClass('org.apache.maven.artifact.ant.Pom')
+	Class<?> deployClass = loader.loadClass('org.apache.maven.artifact.ant.DeployTask')
+	
+    ant.with {	  
+	  // define ant tasks in the scope of the current project
+	  getAntProject().addTaskDefinition('pom', pomClass)
+	  getAntProject().addTaskDefinition('deploy', deployClass)
 	  
       pom id: 'mypom', file: pomFile
       deploy file: bundleFile, {
