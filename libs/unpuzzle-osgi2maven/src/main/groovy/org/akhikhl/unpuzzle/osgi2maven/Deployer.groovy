@@ -9,12 +9,17 @@ package org.akhikhl.unpuzzle.osgi2maven
 
 import groovy.xml.NamespaceBuilder
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 /**
  * Deploys OSGI bundle (jar or directory) to maven repository
  * @author akhikhl
  */
 class Deployer {
     
+   Logger logger = LoggerFactory.getLogger(Deployer.class)
+
   private static URL fileToUrl(File f) {
     String s = f.toURI().toString()
     if(s.endsWith('/'))
@@ -58,12 +63,12 @@ class Deployer {
 	
 	ClassLoader loader = this.getClass().getClassLoader()
     if (this.deployerOptions.ant) {
-	  System.out.prinln('Unsing supported ant ' + this.deployerOptions.ant)
+	  logger.debug('Unsing supported ant {}', this.deployerOptions.ant)
 	  this.ant = this.deployerOptions.ant
 	}
     else {
 	  // create new AntBuilder instance
-	  System.out.println('Using current thread classloader to create a new groovy.util.AntBuilder');
+	  logger.debug('Using current thread classloader to create a new groovy.util.AntBuilder')	  
 	  this.ant = Class.forName('groovy.util.AntBuilder', true, loader).newInstance()
 	}
 		
