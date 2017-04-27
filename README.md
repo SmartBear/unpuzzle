@@ -1,3 +1,9 @@
+** About this fork **
+
+Aims to fix issue akhikhl/unpuzzle#5
+
+Upgrade to gradle 3.5
+
 ![Unpuzzle logo](media/logo.png "Unpuzzle logo")
 
 [![Build Status](https://travis-ci.org/akhikhl/unpuzzle.png?branch=master)](https://travis-ci.org/akhikhl/unpuzzle) 

@@ -9,12 +9,17 @@ package org.akhikhl.unpuzzle.osgi2maven
 
 import groovy.xml.NamespaceBuilder
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 /**
  * Deploys OSGI bundle (jar or directory) to maven repository
  * @author akhikhl
  */
 class Deployer {
     
+   Logger logger = LoggerFactory.getLogger(Deployer.class)
+
   private static URL fileToUrl(File f) {
     String s = f.toURI().toString()
     if(s.endsWith('/'))
@@ -55,22 +60,22 @@ class Deployer {
    */
   Deployer(Map deployerOptions = [:], URL repositoryUrl) {
     this.deployerOptions = ([:] << deployerOptions).asImmutable()
-	
-	ClassLoader loader = this.getClass().getClassLoader()
+  
+  ClassLoader loader = this.getClass().getClassLoader()
     if (this.deployerOptions.ant) {
-	  System.out.prinln('Unsing supported ant ' + this.deployerOptions.ant)
-	  this.ant = this.deployerOptions.ant
-	}
+    logger.debug('Unsing supported ant {}', this.deployerOptions.ant)
+    this.ant = this.deployerOptions.ant
+  }
     else {
-	  // create new AntBuilder instance
-	  System.out.println('Using current thread classloader to create a new groovy.util.AntBuilder');
-	  this.ant = Class.forName('groovy.util.AntBuilder', true, loader).newInstance()
-	}
-		
-	// ensure presence of Pom and Deploy tasks
-	defineAntTask('pom', 'org.apache.maven.artifact.ant.Pom', loader)
-	defineAntTask('deploy', 'org.apache.maven.artifact.ant.DeployTask', loader)
-	
+    // create new AntBuilder instance
+    logger.debug('Using current thread classloader to create a new groovy.util.AntBuilder')    
+    this.ant = Class.forName('groovy.util.AntBuilder', true, loader).newInstance()
+  }
+    
+  // ensure presence of Pom and Deploy tasks
+  defineAntTask('pom', 'org.apache.maven.artifact.ant.Pom', loader)
+  defineAntTask('deploy', 'org.apache.maven.artifact.ant.DeployTask', loader)
+  
     this.repositoryUrl = repositoryUrl
     workFolder = new File(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString())
     workFolder.deleteOnExit()
@@ -82,20 +87,20 @@ class Deployer {
    * Print classpath with exception if task is missing to simplify resulution.
    */
   private void defineAntTask(String taskName, String taskClassName, ClassLoader loader) {
-	Class<?> pomClass = loader.loadClass(taskClassName)
-	if (pomClass == null) {
-	  URL[] clURLs = loader.getURLs()
-	  StringBuilder sb = new StringBuilder()
-	  sb.append('Missing class ')
-	  sb.append(taskClassName)
-	  sb.append('\nEnsure package maven-ant-tasks is in classpath')
-	  for (URL uri: clURLs) {		
-	    sb.append('\n')
-	    sb.append(uri)
-	  }
-	  throw new ClassNotFoundException(sb.toString())
-	}
-	this.ant.getAntProject().addTaskDefinition(taskClassName, pomClass)
+  Class<?> pomClass = loader.loadClass(taskClassName)
+  if (pomClass == null) {
+    URL[] clURLs = loader.getURLs()
+    StringBuilder sb = new StringBuilder()
+    sb.append('Missing class ')
+    sb.append(taskClassName)
+    sb.append('\nEnsure package maven-ant-tasks is in classpath')
+    for (URL uri: clURLs) {    
+      sb.append('\n')
+      sb.append(uri)
+    }
+    throw new ClassNotFoundException(sb.toString())
+  }
+  this.ant.getAntProject().addTaskDefinition(taskClassName, pomClass)
   }
 
   /**
@@ -107,7 +112,7 @@ class Deployer {
   void deployBundle(Map options = [:], Pom pomStruct, File bundleFileOrDirectory) {
     workFolder.mkdirs()
     def pomFile = new File(workFolder, 'myPom.xml')
-    File bundleFile	
+    File bundleFile  
     if (bundleFileOrDirectory.isDirectory()) {
       pomStruct.packaging = 'jar'
       pomFile.text = pomStruct.toString()
@@ -125,16 +130,16 @@ class Deployer {
       ant.zip(basedir: sourceFile, destfile: zipFile)
       sourceFile = zipFile
     }
-	
-	ClassLoader loader = this.getClass().getClassLoader()
-	Class<?> pomClass = loader.loadClass('org.apache.maven.artifact.ant.Pom')
-	Class<?> deployClass = loader.loadClass('org.apache.maven.artifact.ant.DeployTask')
-	
-    ant.with {	  
-	  // define ant tasks in the scope of the current project
-	  getAntProject().addTaskDefinition('pom', pomClass)
-	  getAntProject().addTaskDefinition('deploy', deployClass)
-	  
+  
+  ClassLoader loader = this.getClass().getClassLoader()
+  Class<?> pomClass = loader.loadClass('org.apache.maven.artifact.ant.Pom')
+  Class<?> deployClass = loader.loadClass('org.apache.maven.artifact.ant.DeployTask')
+  
+    ant.with {    
+    // define ant tasks in the scope of the current project
+    getAntProject().addTaskDefinition('pom', pomClass)
+    getAntProject().addTaskDefinition('deploy', deployClass)
+    
       pom id: 'mypom', file: pomFile
       deploy file: bundleFile, {
         pom refid: 'mypom'
