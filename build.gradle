@@ -40,9 +40,6 @@ task('cleanExamples', type: GradleBuild) { task ->
 
 // clean.dependsOn cleanExamples
 
-task('wrapper', type: Wrapper) {
-  gradleVersion = '3.5'
-}
 
 artifactory {
   contextUrl = 'https://oss.jfrog.org/artifactory'

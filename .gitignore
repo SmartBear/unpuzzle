@@ -3,3 +3,4 @@ build
 .groovy
 .settings
 .nb-*
+.idea
