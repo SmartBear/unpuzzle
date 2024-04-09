@@ -1,8 +1,8 @@
 // include this file in subprojects:
 // apply from: rootProject.file('libs/publish.gradle')
 
-apply plugin: 'maven'
 apply plugin: 'maven-publish'
+apply plugin: 'maven'
 apply plugin: 'com.jfrog.artifactory'
 apply plugin: 'com.jfrog.bintray'
 
@@ -47,6 +47,23 @@ publishing {
     }
   }
 }
+
+// Publishing configuration
+/*ublishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+      // Configure the POM when it's being configured
+      pom.whenConfigured { pom ->
+        pom.project {
+          name = thisProject.name
+          configurePom.rehydrate(delegate, owner, thisObject).call()
+          // Add any additional configurations if needed
+        }
+      }
+    }
+  }
+}*/
 
 install.repositories.mavenInstaller.pom*.whenConfigured { pom ->
   pom.project {

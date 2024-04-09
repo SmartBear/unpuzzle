@@ -17,11 +17,11 @@ version = rootProject.version
 
 dependencies {
   if(gradle.gradleVersion.startsWith('1.'))
-    testCompile "org.codehaus.groovy:groovy-backports-compat23:$groovy_version"
-  testCompile "org.spockframework:spock-core:${spock_version}", {
+    testImplementation "org.codehaus.groovy:groovy-backports-compat23:$groovy_version"
+  testImplementation "org.spockframework:spock-core:${spock_version}", {
     exclude group: 'org.codehaus.groovy', module: 'groovy-all'
   }
-  testCompile "org.codehaus.groovy:groovy-all:${groovy_version}"
+  testImplementation "org.codehaus.groovy:groovy-all:${groovy_version}"
 }
 
 sourceCompatibility = '1.6'

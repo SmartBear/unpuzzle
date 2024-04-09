@@ -14,7 +14,6 @@ import org.akhikhl.unpuzzle.utils.SysConsole
 import org.akhikhl.unpuzzle.utils.Downloader
 import org.akhikhl.unpuzzle.utils.ArchiveUnpacker
 
-import org.apache.commons.io.FileUtils
 
 /**
  * Downloads and unpacks more or more eclipse distributions from the specified URLs.
