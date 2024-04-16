@@ -3,6 +3,8 @@ apply from: rootProject.file('libs/publish.gradle')
 
 dependencies {
   implementation project(':libs:unpuzzle-eclipse2maven')
+  implementation project(':libs:unpuzzle-osgi2maven')
+  implementation "commons-io:commons-io:2.4"
   implementation gradleApi()
 }
 
