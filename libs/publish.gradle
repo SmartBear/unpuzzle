@@ -49,7 +49,7 @@ publishing {
 }
 
 // Publishing configuration
-/*ublishing {
+/*publishing {
   publications {
     mavenJava(MavenPublication) {
       from components.java
